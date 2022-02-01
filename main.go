@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -12,6 +13,19 @@ type User struct {
 	Name    string `json:"name"`
 	Age     int32  `json:"age"`
 	Balance `json:"balance"`
+}
+
+func (u *User) getCurrency() string {
+	switch u.Currency {
+	case RUB:
+		return "RUB"
+	case EUR:
+		return "EUR"
+	case USD:
+		return "USD"
+	default:
+		return ""
+	}
 }
 
 type Currency int64
@@ -38,6 +52,7 @@ func main() {
 	router.HandleFunc("/user", saveUser).Methods("POST")
 	router.HandleFunc("/wallet/top_up", topUpAccount).Methods("POST")
 	router.HandleFunc("/wallet/take_off", takeOffAccount).Methods("PUT")
+	router.HandleFunc("/wallet/{name}", checkTheBalance).Methods("GET")
 
 	http.Handle("/", router)
 
@@ -100,6 +115,7 @@ func checkCurrency(currency string) (Currency, error) {
 
 	}
 }
+
 func topUpAccount(w http.ResponseWriter, r *http.Request) {
 
 	var replenishment Money
@@ -140,9 +156,8 @@ func takeOffAccount(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if user.Currency != cur {
-				_, _ = w.Write([]byte("other currency\n"))
-				_ = json.NewEncoder(w).Encode(&user)
-				log.Printf("other currency %d\n", user.Currency)
+				_, _ = w.Write([]byte(fmt.Sprintf("other currency %s\n", user.getCurrency())))
+				log.Printf("other currency %s\n", user.getCurrency())
 				return
 			}
 			if user.Amount-withdrawal.Amount >= 0 {
@@ -161,4 +176,22 @@ func takeOffAccount(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("it is impossible to take off the account because the user does not exist"))
 		log.Println("it is impossible to take off the account because the user does not exist")
 	}
+}
+
+func checkTheBalance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	isFind := false
+	for _, user := range users {
+		if user.Name == name {
+			_, _ = w.Write([]byte(fmt.Sprintf("balance of the %s: %f %s", user.Name, user.Amount, user.getCurrency())))
+			isFind = true
+			break
+		}
+	}
+	if !isFind {
+		_, _ = w.Write([]byte("user not found"))
+		log.Println("user not found")
+	}
+
 }
