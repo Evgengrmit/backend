@@ -37,6 +37,7 @@ func main() {
 	router.HandleFunc("/users", getUsers).Methods("GET")
 	router.HandleFunc("/user", saveUser).Methods("POST")
 	router.HandleFunc("/wallet/top_up", topUpAccount).Methods("POST")
+	router.HandleFunc("/wallet/take_off", takeOffAccount).Methods("PUT")
 
 	http.Handle("/", router)
 
@@ -109,8 +110,8 @@ func topUpAccount(w http.ResponseWriter, r *http.Request) {
 			users[i].Amount += replenishment.Amount
 			cur, err := checkCurrency(replenishment.Currency)
 			if err != nil {
-				_, _ = w.Write([]byte("error in the name of the currency"))
-				log.Println("error in the name of the currency")
+				_, _ = w.Write([]byte(err.Error()))
+				log.Println(err)
 				return
 			}
 			users[i].Currency = cur
@@ -123,5 +124,41 @@ func topUpAccount(w http.ResponseWriter, r *http.Request) {
 	if !isFind {
 		_, _ = w.Write([]byte("it is impossible to top up the account because the user does not exist"))
 		log.Println("it is impossible to top up the account because the user does not exist")
+	}
+}
+
+func takeOffAccount(w http.ResponseWriter, r *http.Request) {
+	var withdrawal Money
+	_ = json.NewDecoder(r.Body).Decode(&withdrawal)
+	isFind := false
+	for i, user := range users {
+		if withdrawal.Name == user.Name {
+			cur, err := checkCurrency(withdrawal.Currency)
+			if err != nil {
+				_, _ = w.Write([]byte(err.Error()))
+				log.Println(err)
+				return
+			}
+			if user.Currency != cur {
+				_, _ = w.Write([]byte("other currency\n"))
+				_ = json.NewEncoder(w).Encode(&user)
+				log.Printf("other currency %d\n", user.Currency)
+				return
+			}
+			if user.Amount-withdrawal.Amount >= 0 {
+				users[i].Amount -= withdrawal.Amount
+				_ = json.NewEncoder(w).Encode(&users[i])
+				isFind = true
+				break
+			} else {
+				_, _ = w.Write([]byte("there are not enough funds in the account"))
+				log.Println("there are not enough funds in the account")
+				return
+			}
+		}
+	}
+	if !isFind {
+		_, _ = w.Write([]byte("it is impossible to take off the account because the user does not exist"))
+		log.Println("it is impossible to take off the account because the user does not exist")
 	}
 }
