@@ -65,6 +65,7 @@ func main() {
 	log.Fatal(err)
 }
 
+// Создание и сохранения нового пользователя
 func saveUser(w http.ResponseWriter, r *http.Request) {
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -82,6 +83,7 @@ func saveUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Список всех пользователей
 func getUsers(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(users)
@@ -91,6 +93,7 @@ func getUsers(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
+// Данные о пользователе
 func getUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
@@ -114,6 +117,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Баланс пользователя
 func checkTheBalance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
@@ -138,6 +142,7 @@ func checkTheBalance(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Пополнение счета
 func topUpAccount(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
@@ -176,6 +181,7 @@ func topUpAccount(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//Снятие со счета
 func takeOffAccount(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
@@ -223,6 +229,7 @@ func takeOffAccount(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//Перевод между пользователями
 func transfer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
