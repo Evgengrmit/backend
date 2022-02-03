@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io"
 	"log"
 	"net/http"
 )
@@ -15,6 +16,12 @@ type User struct {
 	Balance `json:"balance"`
 }
 
+func (u *User) topUpBalance(money float64) {
+	u.Amount += money
+}
+func (u *User) takeOffBalance(money float64) {
+	u.Amount -= money
+}
 func (u *User) getCurrency() string {
 	switch u.Currency {
 	case RUB:
@@ -38,7 +45,8 @@ func checkCurrency(currency Currency) error {
 type Currency int64
 
 const (
-	RUB Currency = iota
+	coefficient          = 100
+	RUB         Currency = iota
 	EUR
 	USD
 )
@@ -48,6 +56,15 @@ type Balance struct {
 	Currency Currency `json:"currency"` // enum iota
 }
 
+func translateError(w io.Writer, err error, funcName string) {
+	_, _ = w.Write([]byte(err.Error()))
+	log.Println(fmt.Errorf("ERROR\tfunction %s: %s", funcName, err.Error()))
+}
+func translateInfo(w io.Writer, info string, funcName string) {
+	_, _ = w.Write([]byte(info))
+	log.Println(fmt.Sprintf("INFO\tfunction %s: %s", funcName, info))
+}
+
 var users []User
 
 func main() {
@@ -55,7 +72,7 @@ func main() {
 	router.HandleFunc("/user", saveUser).Methods("POST")
 	router.HandleFunc("/users", getUsers).Methods("GET")
 	router.HandleFunc("/user/{name}", getUser).Methods("GET")
-	router.HandleFunc("/user/{name}/wallet", checkTheBalance).Methods("GET")
+	router.HandleFunc("/user/{name}/wallet", getTheBalance).Methods("GET")
 	router.HandleFunc("/user/{name}/wallet/top_up", topUpAccount).Methods("POST")
 	router.HandleFunc("/user/{name}/wallet/take_off", takeOffAccount).Methods("PUT")
 	router.HandleFunc("/user/{name}/wallet/transfer", transfer).Methods("POST")
@@ -70,15 +87,13 @@ func saveUser(w http.ResponseWriter, r *http.Request) {
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		log.Println(fmt.Errorf("function saveUser: %s", err.Error()))
+		translateError(w, err, "saveUser")
 		return
 	}
 	users = append(users, user)
 	err = json.NewEncoder(w).Encode(&user)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		log.Println(fmt.Errorf("function saveUser: %s", err.Error()))
+		translateError(w, err, "saveUser")
 		return
 	}
 }
@@ -88,8 +103,7 @@ func getUsers(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(users)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		log.Println(fmt.Errorf("function getUsers: %s", err.Error()))
+		translateError(w, err, "getUsers")
 	}
 }
 
@@ -97,48 +111,37 @@ func getUsers(w http.ResponseWriter, _ *http.Request) {
 func getUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	isFind := false
 	for _, user := range users {
 		if user.Name == name {
 			err := json.NewEncoder(w).Encode(user)
 			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				log.Println(fmt.Errorf("function getUser: %s", err.Error()))
+				translateError(w, err, "getUser")
 				return
 			}
-			isFind = true
-			break
 
 		}
 	}
-	if !isFind {
-		_, _ = w.Write([]byte("user not found"))
-		log.Println("function getUser: user not found")
-	}
+	err := errors.New("user not found")
+	translateError(w, err, "getUser")
+
 }
 
 // Баланс пользователя
-func checkTheBalance(w http.ResponseWriter, r *http.Request) {
+func getTheBalance(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	isFind := false
 	for _, user := range users {
 		if user.Name == name {
 			balance := &Balance{Amount: user.Amount, Currency: user.Currency}
 			err := json.NewEncoder(w).Encode(balance)
 			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				log.Println(fmt.Errorf("function checkTheBalance: %s", err.Error()))
+				translateError(w, err, "getTheBalance")
 				return
 			}
-			isFind = true
-			break
 		}
 	}
-	if !isFind {
-		_, _ = w.Write([]byte("user not found"))
-		log.Println("function checkTheBalance: user not found")
-	}
+	err := errors.New("user not found")
+	translateError(w, err, "getTheBalance")
 
 }
 
@@ -149,36 +152,29 @@ func topUpAccount(w http.ResponseWriter, r *http.Request) {
 	var replenishment Balance
 	err := json.NewDecoder(r.Body).Decode(&replenishment)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		log.Println(fmt.Errorf("function topUpAccount: %s", err.Error()))
+		translateError(w, err, "topUpAccount")
 		return
 	}
-	isFind := false
-	for i, user := range users {
-		if name == user.Name {
-			users[i].Amount += replenishment.Amount
+
+	for i := range users {
+		if name == users[i].Name {
 			err = checkCurrency(replenishment.Currency)
 			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				log.Println(fmt.Errorf("function topUpAccount: %s", err.Error()))
+				translateError(w, err, "topUpAccount")
 				return
 			}
+			users[i].topUpBalance(replenishment.Amount)
 			users[i].Currency = replenishment.Currency
-			err = json.NewEncoder(w).Encode(&users[i])
+			err = json.NewEncoder(w).Encode(users[i])
 			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				log.Println(fmt.Errorf("function topUpAccount: %s", err.Error()))
-				return
+				translateError(w, err, "topUpAccount")
 			}
-			isFind = true
-			break
+			return
 		}
 
 	}
-	if !isFind {
-		_, _ = w.Write([]byte("it is impossible to top up the account because the user does not exist"))
-		log.Println("function topUpAccount: it is impossible to top up the account because the user does not exist")
-	}
+	err = errors.New("it is impossible to top up the account because the user does not exist")
+	translateError(w, err, "topUpAccount")
 }
 
 //Снятие со счета
@@ -188,45 +184,37 @@ func takeOffAccount(w http.ResponseWriter, r *http.Request) {
 	var withdrawal Balance
 	err := json.NewDecoder(r.Body).Decode(&withdrawal)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		log.Println(fmt.Errorf("function takeOffAccount: %s", err.Error()))
+		translateError(w, err, "takeOffAccount")
 		return
 	}
-	isFind := false
-	for i, user := range users {
-		if name == user.Name {
-			err := checkCurrency(withdrawal.Currency)
+	for i := range users {
+		if name == users[i].Name {
+			err = checkCurrency(withdrawal.Currency)
 			if err != nil {
-				_, _ = w.Write([]byte(err.Error()))
-				log.Println(fmt.Errorf("function takeOffAccount: %s", err.Error()))
+				translateError(w, err, "takeOffAccount")
 				return
 			}
-			if user.Currency != withdrawal.Currency {
-				_, _ = w.Write([]byte(fmt.Sprintf("other currency %s\n", user.getCurrency())))
-				log.Printf("function takeOffAccount: other currency %s\n", user.getCurrency())
+			if users[i].Currency != withdrawal.Currency {
+				err = fmt.Errorf("other currency %s\n", users[i].getCurrency())
+				translateError(w, err, "takeOffAccount")
 				return
 			}
-			if user.Amount-withdrawal.Amount >= 0 {
-				users[i].Amount -= withdrawal.Amount
-				err = json.NewEncoder(w).Encode(&users[i])
+			if users[i].Amount-withdrawal.Amount >= 0 {
+				users[i].takeOffBalance(withdrawal.Amount)
+				err = json.NewEncoder(w).Encode(users[i])
 				if err != nil {
-					_, _ = w.Write([]byte(err.Error()))
-					log.Println(fmt.Errorf("function takeOffAccount: %s", err.Error()))
+					translateError(w, err, "takeOffAccount")
 					return
 				}
-				isFind = true
-				break
 			} else {
-				_, _ = w.Write([]byte("there are not enough funds in the account"))
-				log.Println("function takeOffAccount: there are not enough funds in the account")
+				err = errors.New("there are not enough funds in the account")
+				translateError(w, err, "takeOffAccount")
 				return
 			}
 		}
 	}
-	if !isFind {
-		_, _ = w.Write([]byte("it is impossible to take off the account because the user does not exist"))
-		log.Println("function takeOffAccount: it is impossible to take off the account because the user does not exist")
-	}
+	err = errors.New("it is impossible to take off the account because the user does not exist")
+	translateError(w, err, "takeOffAccount")
 }
 
 //Перевод между пользователями
@@ -237,39 +225,42 @@ func transfer(w http.ResponseWriter, r *http.Request) {
 	isFindSender, isFindRecipient := false, false
 	err := json.NewDecoder(r.Body).Decode(transferData)
 	if err != nil {
-		_, _ = w.Write([]byte(err.Error()))
-		log.Println(fmt.Errorf("function transfer: %s", err.Error()))
+		translateError(w, err, "transfer")
 		return
 	}
-	for i, user := range users {
-		if user.Name == name {
+	for i := range users {
+		if users[i].Name == name {
 			sender = &users[i]
 			isFindSender = true
 
 		}
-		if user.Name == transferData.Name {
+		if users[i].Name == transferData.Name {
 			recipient = &users[i]
 			isFindRecipient = true
 		}
 		if isFindSender && isFindRecipient {
-			if sender.Amount-transferData.Amount >= 0 {
-				sender.Amount -= transferData.Amount
-				if sender.Currency == RUB {
-					recipient.Amount += transferData.Amount * 100
-				} else {
-					recipient.Amount += transferData.Amount
-				}
-				_, _ = w.Write([]byte("the transfer was carried out successfully"))
-			} else {
-				_, _ = w.Write([]byte("there are not enough funds in the account"))
-				log.Println("function transfer: there are not enough funds in the account")
+			if sender.Name == recipient.Name {
+				err = errors.New("can't translate to yourself")
+				translateError(w, err, "transfer")
+				return
 			}
-			break
+			if sender.Amount-transferData.Amount >= 0 {
+				sender.takeOffBalance(transferData.Amount)
+				if sender.Currency == RUB {
+					recipient.topUpBalance(transferData.Amount * coefficient)
+				} else {
+					recipient.topUpBalance(transferData.Amount)
+				}
+				translateInfo(w, "the transfer was carried out successfully", "transfer")
+
+			} else {
+				err = errors.New("there are not enough funds in the account")
+				translateError(w, err, "transfer")
+			}
+			return
 		}
 	}
-	if !(isFindSender && isFindRecipient) {
-		_, _ = w.Write([]byte("user not found"))
-		log.Println("function transfer: user not found")
-	}
+	err = errors.New("user not found")
+	translateError(w, err, "transfer")
 
 }
