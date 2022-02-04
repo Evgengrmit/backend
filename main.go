@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 type User struct {
@@ -56,40 +56,36 @@ type Balance struct {
 	Currency Currency `json:"currency"` // enum iota
 }
 
-func translateError(w io.Writer, err error, funcName string) {
-	_, _ = w.Write([]byte(err.Error()))
-	log.Println(fmt.Errorf("ERROR\tfunction %s: %s", funcName, err.Error()))
-}
-func translateInfo(w io.Writer, info string, funcName string) {
-	_, _ = w.Write([]byte(info))
-	log.Println(fmt.Sprintf("INFO\tfunction %s: %s", funcName, info))
-}
-
 var users []User
 
 func main() {
+	port := os.Getenv("PORT")
+	fmt.Println(port)
+
 	router := mux.NewRouter()
-	router.HandleFunc("/user", saveUser).Methods("POST")
+
 	router.HandleFunc("/users", getUsers).Methods("GET")
-	router.HandleFunc("/user/{name}", getUser).Methods("GET")
-	router.HandleFunc("/user/{name}/wallet", getTheBalance).Methods("GET")
+	userRouter := router.PathPrefix("/user").Subrouter()
+	userRouter.HandleFunc("", saveUser).Methods("POST")
+	userRouter.HandleFunc("/{name}", getUser).Methods("GET")
+
+	router.HandleFunc("/user/{name}/wallet", getBalanceByName).Methods("GET")
 	router.HandleFunc("/user/{name}/wallet/top_up", topUpAccount).Methods("POST")
 	router.HandleFunc("/user/{name}/wallet/take_off", takeOffAccount).Methods("PUT")
 	router.HandleFunc("/user/{name}/wallet/transfer", transfer).Methods("POST")
 	http.Handle("/", router)
-	log.Println("Server available on port 8080")
-	err := http.ListenAndServe(":8080", nil)
+	log.Println("Server available on port " + port)
+	err := http.ListenAndServe(":"+port, nil)
 	log.Fatal(err)
 }
 
 // Создание и сохранения нового пользователя
 func saveUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		translateError(w, err, "saveUser")
-		return
-	}
+	checkError(w, err, "saveUser")
+
 	users = append(users, user)
 	err = json.NewEncoder(w).Encode(&user)
 	if err != nil {
@@ -127,7 +123,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // Баланс пользователя
-func getTheBalance(w http.ResponseWriter, r *http.Request) {
+func getBalanceByName(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
 	for _, user := range users {
@@ -135,13 +131,13 @@ func getTheBalance(w http.ResponseWriter, r *http.Request) {
 			balance := &Balance{Amount: user.Amount, Currency: user.Currency}
 			err := json.NewEncoder(w).Encode(balance)
 			if err != nil {
-				translateError(w, err, "getTheBalance")
+				translateError(w, err, "getBalanceByName")
 				return
 			}
 		}
 	}
 	err := errors.New("user not found")
-	translateError(w, err, "getTheBalance")
+	translateError(w, err, "getBalanceByName")
 
 }
 
@@ -248,19 +244,18 @@ func transfer(w http.ResponseWriter, r *http.Request) {
 				sender.takeOffBalance(transferData.Amount)
 				if sender.Currency == RUB {
 					recipient.topUpBalance(transferData.Amount * coefficient)
-				} else {
-					recipient.topUpBalance(transferData.Amount)
+					translateInfo(w, "the transfer was carried out successfully", "transfer")
+					return
 				}
+				recipient.topUpBalance(transferData.Amount)
 				translateInfo(w, "the transfer was carried out successfully", "transfer")
-
-			} else {
-				err = errors.New("there are not enough funds in the account")
-				translateError(w, err, "transfer")
+				return
 			}
+			err = errors.New("there are not enough funds in the account")
+			translateError(w, err, "transfer")
 			return
 		}
 	}
 	err = errors.New("user not found")
 	translateError(w, err, "transfer")
-
 }
