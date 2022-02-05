@@ -73,12 +73,7 @@ func TopUpAccount(w http.ResponseWriter, r *http.Request) {
 		helper.TranslateError(w, err, "topUpAccount")
 		return
 	}
-	foundUser, err := users.FindUserByName(name)
-	if err != nil {
-		helper.TranslateError(w, err, "TopUpAccount")
-		return
-	}
-	err = foundUser.TopUpAccount(replenishment.AccountID, replenishment.Balance)
+	foundUser, err := users.TakeOffForUser(name, &replenishment)
 	if err != nil {
 		helper.TranslateError(w, err, "TopUpAccount")
 		return
@@ -98,22 +93,17 @@ func TakeOffAccount(w http.ResponseWriter, r *http.Request) {
 	var replenishment account.Account
 	err := json.NewDecoder(r.Body).Decode(&replenishment)
 	if err != nil {
-		helper.TranslateError(w, err, "topUpAccount")
+		helper.TranslateError(w, err, "takeOffAccount")
 		return
 	}
-	foundUser, err := users.FindUserByName(name)
+	foundUser, err := users.TakeOffForUser(name, &replenishment)
 	if err != nil {
-		helper.TranslateError(w, err, "TopUpAccount")
-		return
-	}
-	err = foundUser.TakeOffAccount(replenishment.AccountID, replenishment.Balance)
-	if err != nil {
-		helper.TranslateError(w, err, "TopUpAccount")
+		helper.TranslateError(w, err, "takeOffAccount")
 		return
 	}
 	err = json.NewEncoder(w).Encode(foundUser)
 	if err != nil {
-		helper.TranslateError(w, err, "TopUpAccount")
+		helper.TranslateError(w, err, "takeOffAccount")
 		return
 	}
 	return

@@ -3,6 +3,7 @@ package main
 import (
 	"backend/user"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 	"os"
 )
@@ -26,6 +27,6 @@ func NewServer() *mux.Router {
 func RunServer(port string) error {
 	os.Setenv("PORT", port)
 	router := NewServer()
-	http.Handle("/", router)
-	return http.ListenAndServe(":"+port, nil)
+	log.Println("Server available on port " + port)
+	return http.ListenAndServe(":"+port, router)
 }

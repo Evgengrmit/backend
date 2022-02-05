@@ -79,7 +79,28 @@ func (users *Users) FindUserByName(name string) (*User, error) {
 func (users *Users) GetUsers() []User {
 	return users.Users
 }
-
+func (users *Users) TopUpForUser(username string, accData *account.Account) (User, error) {
+	foundUser, err := users.FindUserByName(username)
+	if err != nil {
+		return User{}, err
+	}
+	err = foundUser.TopUpAccount(accData.AccountID, accData.Balance)
+	if err != nil {
+		return User{}, err
+	}
+	return *foundUser, nil
+}
+func (users *Users) TakeOffForUser(username string, accData *account.Account) (User, error) {
+	foundUser, err := users.FindUserByName(username)
+	if err != nil {
+		return User{}, err
+	}
+	err = foundUser.TakeOffAccount(accData.AccountID, accData.Balance)
+	if err != nil {
+		return User{}, err
+	}
+	return *foundUser, nil
+}
 func (users *Users) TransferBetweenUsers(senderName string, td *TransferData) error {
 	sender, err := users.FindUserByName(senderName)
 	if err != nil {
