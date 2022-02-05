@@ -20,6 +20,7 @@ func NewServer() *mux.Router {
 	userRouter.HandleFunc("/{name}/wallet/top_up", user.TopUpAccount).Methods("POST")
 	userRouter.HandleFunc("/{name}/wallet/take_off", user.TakeOffAccount).Methods("PUT")
 	userRouter.HandleFunc("/{name}/wallet/transfer", user.Transfer).Methods("POST")
+	userRouter.HandleFunc("/{name}/wallet/create", user.CreateAccForUser).Methods("POST")
 
 	return router
 }

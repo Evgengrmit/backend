@@ -2,6 +2,7 @@ package user
 
 import (
 	"backend/account"
+	"backend/account/balance"
 	"backend/helper"
 	"encoding/json"
 	"github.com/gorilla/mux"
@@ -65,6 +66,7 @@ func GetAccountsByName(w http.ResponseWriter, r *http.Request) {
 
 // TopUpAccount Пополнение счета
 func TopUpAccount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	name := vars["name"]
 	var replenishment account.Account
@@ -88,6 +90,7 @@ func TopUpAccount(w http.ResponseWriter, r *http.Request) {
 
 // TakeOffAccount Снятие со счета
 func TakeOffAccount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	name := vars["name"]
 	var replenishment account.Account
@@ -111,6 +114,7 @@ func TakeOffAccount(w http.ResponseWriter, r *http.Request) {
 
 // Transfer Перевод между пользователями
 func Transfer(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	name := vars["name"]
 	transferData := &TransferData{}
@@ -125,4 +129,29 @@ func Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	return
+}
+
+func CreateAccForUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+	name := vars["name"]
+	var valute balance.Currency
+	err := json.NewDecoder(r.Body).Decode(&valute)
+	if err != nil {
+		helper.TranslateError(w, err, "CreateAccForUser")
+		return
+	}
+	foundUser, err := users.FindUserByName(name)
+	if err != nil {
+		helper.TranslateError(w, err, "CreateAccForUser")
+		return
+	}
+	foundUser.CreateAccount(valute)
+	err = json.NewEncoder(w).Encode(foundUser)
+	if err != nil {
+		helper.TranslateError(w, err, "CreateAccForUser")
+		return
+	}
+	return
+
 }

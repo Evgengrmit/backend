@@ -50,11 +50,13 @@ func (u *User) TakeOffAccount(id uint64, b balance.Balance) error {
 	return nil
 
 }
-func (u *User) CreateAccount(b balance.Balance) {
-	u.Accounts = append(u.Accounts, account.Account{
+func (u *User) CreateAccount(currency balance.Currency) {
+	newAccount := account.Account{
 		AccountID: uint64(len(accounts) + 1),
 		UserID:    u.UserID,
-		Balance:   b})
+		Balance:   balance.Balance{Currency: currency}}
+	u.Accounts = append(u.Accounts, newAccount)
+	accounts = append(accounts, newAccount)
 }
 
 // USERS
