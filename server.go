@@ -25,7 +25,10 @@ func NewServer() *mux.Router {
 }
 
 func RunServer(port string) error {
-	os.Setenv("PORT", port)
+	err := os.Setenv("PORT", port)
+	if err != nil {
+		return err
+	}
 	router := NewServer()
 	log.Println("Server available on port " + port)
 	return http.ListenAndServe(":"+port, router)
