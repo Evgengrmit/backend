@@ -75,7 +75,7 @@ func TopUpAccount(w http.ResponseWriter, r *http.Request) {
 		helper.TranslateError(w, err, "topUpAccount")
 		return
 	}
-	foundUser, err := users.TakeOffForUser(name, &replenishment)
+	foundUser, err := users.TopUpForUser(name, &replenishment)
 	if err != nil {
 		helper.TranslateError(w, err, "TopUpAccount")
 		return
@@ -146,7 +146,11 @@ func CreateAccForUser(w http.ResponseWriter, r *http.Request) {
 		helper.TranslateError(w, err, "CreateAccForUser")
 		return
 	}
-	foundUser.CreateAccount(valute)
+	err = foundUser.CreateAccount(valute)
+	if err != nil {
+		helper.TranslateError(w, err, "CreateAccForUser")
+		return
+	}
 	err = json.NewEncoder(w).Encode(foundUser)
 	if err != nil {
 		helper.TranslateError(w, err, "CreateAccForUser")
