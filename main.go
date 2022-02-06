@@ -3,5 +3,5 @@ package main
 import "log"
 
 func main() {
-	log.Fatal(RunServer("8080"))
+	log.Fatal(RunServer(":8080"))
 }

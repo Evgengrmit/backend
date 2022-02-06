@@ -96,6 +96,7 @@ func CreateAccForUser(c *gin.Context) {
 	var currency balance.Currency
 	if err := c.ShouldBindJSON(&currency); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 	foundUser, err := users.CreateAccountForUser(name, currency)
 	if err != nil {

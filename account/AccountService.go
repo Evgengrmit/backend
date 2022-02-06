@@ -3,6 +3,7 @@ package account
 import (
 	"backend/account/balance"
 	"errors"
+	"fmt"
 )
 
 func (a *Account) TopUp(b balance.Balance) error {
@@ -14,7 +15,7 @@ func (a *Account) TopUp(b balance.Balance) error {
 		a.Balance.TopUp(b.Amount)
 		return nil
 	}
-	return errors.New("different currencies")
+	return fmt.Errorf("different currencies %d %d", a.Balance.Currency, b.Currency)
 }
 
 func (a *Account) TakeOff(b balance.Balance) error {
