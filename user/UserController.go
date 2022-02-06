@@ -3,159 +3,104 @@ package user
 import (
 	"backend/account"
 	"backend/account/balance"
-	"backend/helper"
-	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 // SaveUser Создание и сохранения нового пользователя
-func SaveUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func SaveUser(c *gin.Context) {
 	user := NewUser()
-	err := json.NewDecoder(r.Body).Decode(&user)
+
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	users.AddUser(*user)
-	helper.CheckError(w, err, "saveUser")
-	err = json.NewEncoder(w).Encode(&user)
-	if err != nil {
-		helper.TranslateError(w, err, "saveUser")
-		return
-	}
+	c.JSON(http.StatusCreated, user)
 }
 
-func GetUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	name := vars["name"]
+func GetUser(c *gin.Context) {
+	name := c.Param("name")
 	foundUser, err := users.FindUserByName(name)
 	if err != nil {
-		helper.TranslateError(w, err, "getUser")
+		c.String(http.StatusNotFound, err.Error())
 		return
 	}
-	err = json.NewEncoder(w).Encode(foundUser)
-	if err != nil {
-		helper.TranslateError(w, err, "getUser")
-		return
-	}
+	c.JSON(http.StatusOK, foundUser)
+
 }
 
-func GetUsers(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	allUsers := users.GetUsers()
-	err := json.NewEncoder(w).Encode(allUsers)
-	if err != nil {
-		helper.TranslateError(w, err, "getUsers")
-	}
+func GetUsers(c *gin.Context) {
+	c.JSON(http.StatusOK, users.GetUsers())
 }
 
-func GetAccountsByName(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	name := vars["name"]
+func GetAccountsByName(c *gin.Context) {
+	name := c.Param("name")
 	foundUser, err := users.FindUserByName(name)
 	if err != nil {
-		helper.TranslateError(w, err, "GetBalancesByName")
+		c.String(http.StatusNotFound, err.Error())
 		return
 	}
-	err = json.NewEncoder(w).Encode(foundUser.GetAccounts())
-	if err != nil {
-		helper.TranslateError(w, err, "getBalanceByName")
-		return
-	}
+	c.JSON(http.StatusOK, foundUser.GetAccounts())
 }
 
 // TopUpAccount Пополнение счета
-func TopUpAccount(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	name := vars["name"]
+func TopUpAccount(c *gin.Context) {
+	name := c.Param("name")
 	var replenishment account.Account
-	err := json.NewDecoder(r.Body).Decode(&replenishment)
-	if err != nil {
-		helper.TranslateError(w, err, "topUpAccount")
+	if err := c.ShouldBindJSON(&replenishment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	foundUser, err := users.TopUpForUser(name, &replenishment)
 	if err != nil {
-		helper.TranslateError(w, err, "TopUpAccount")
+		c.String(http.StatusNotFound, err.Error())
 		return
 	}
-	err = json.NewEncoder(w).Encode(foundUser)
-	if err != nil {
-		helper.TranslateError(w, err, "TopUpAccount")
-		return
-	}
-	return
+	c.JSON(http.StatusOK, foundUser)
 }
 
-// TakeOffAccount Снятие со счета
-func TakeOffAccount(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	name := vars["name"]
+// TakeOffAccount Пополнение счета
+func TakeOffAccount(c *gin.Context) {
+	name := c.Param("name")
 	var replenishment account.Account
-	err := json.NewDecoder(r.Body).Decode(&replenishment)
-	if err != nil {
-		helper.TranslateError(w, err, "takeOffAccount")
+	if err := c.ShouldBindJSON(&replenishment); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	foundUser, err := users.TakeOffForUser(name, &replenishment)
 	if err != nil {
-		helper.TranslateError(w, err, "takeOffAccount")
+		c.String(http.StatusNotFound, err.Error())
 		return
 	}
-	err = json.NewEncoder(w).Encode(foundUser)
-	if err != nil {
-		helper.TranslateError(w, err, "takeOffAccount")
-		return
-	}
-	return
+	c.JSON(http.StatusOK, foundUser)
 }
 
 // Transfer Перевод между пользователями
-func Transfer(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	name := vars["name"]
-	transferData := &TransferData{}
-	err := json.NewDecoder(r.Body).Decode(transferData)
-	if err != nil {
-		helper.TranslateError(w, err, "Transfer")
+func Transfer(c *gin.Context) {
+	name := c.Param("name")
+	var transferData TransferData
+	if err := c.ShouldBindJSON(&transferData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = users.TransferBetweenUsers(name, transferData)
-	if err != nil {
-		helper.TranslateError(w, err, "Transfer")
-		return
+	if err := users.TransferBetweenUsers(name, &transferData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
-	return
+	c.String(http.StatusOK, "transfer was successful")
 }
 
-func CreateAccForUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	vars := mux.Vars(r)
-	name := vars["name"]
-	var valute balance.Currency
-	err := json.NewDecoder(r.Body).Decode(&valute)
+// CreateAccForUser Создание нового аккаунта для юзера
+func CreateAccForUser(c *gin.Context) {
+	name := c.Param("name")
+	var currency balance.Currency
+	if err := c.ShouldBindJSON(&currency); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+	foundUser, err := users.CreateAccountForUser(name, currency)
 	if err != nil {
-		helper.TranslateError(w, err, "CreateAccForUser")
+		c.String(http.StatusNotFound, err.Error())
 		return
 	}
-	foundUser, err := users.FindUserByName(name)
-	if err != nil {
-		helper.TranslateError(w, err, "CreateAccForUser")
-		return
-	}
-	err = foundUser.CreateAccount(valute)
-	if err != nil {
-		helper.TranslateError(w, err, "CreateAccForUser")
-		return
-	}
-	err = json.NewEncoder(w).Encode(foundUser)
-	if err != nil {
-		helper.TranslateError(w, err, "CreateAccForUser")
-		return
-	}
-	return
-
+	c.JSON(http.StatusOK, foundUser)
 }

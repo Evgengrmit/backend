@@ -86,6 +86,16 @@ func (users *Users) FindUserByName(name string) (*User, error) {
 func (users *Users) GetUsers() []User {
 	return users.Users
 }
+func (users *Users) CreateAccountForUser(username string, curr balance.Currency) (User, error) {
+	foundUser, err := users.FindUserByName(username)
+	if err != nil {
+		return User{}, err
+	}
+	if err = foundUser.CreateAccount(curr); err != nil {
+		return User{}, err
+	}
+	return *foundUser, nil
+}
 func (users *Users) TopUpForUser(username string, accData *account.Account) (User, error) {
 	foundUser, err := users.FindUserByName(username)
 	if err != nil {

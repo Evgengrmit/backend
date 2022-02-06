@@ -2,26 +2,20 @@ package main
 
 import (
 	"backend/user"
-	"github.com/gorilla/mux"
-	"log"
-	"net/http"
+	"github.com/gin-gonic/gin"
 	"os"
 )
 
-func NewServer() *mux.Router {
-	router := mux.NewRouter()
-	router.HandleFunc("/users", user.GetUsers).Methods("GET")
-
-	userRouter := router.PathPrefix("/user").Subrouter()
-
-	userRouter.HandleFunc("", user.SaveUser).Methods("POST")
-	userRouter.HandleFunc("/{name}", user.GetUser).Methods("GET")
-	userRouter.HandleFunc("/{name}/wallet", user.GetAccountsByName).Methods("GET")
-	userRouter.HandleFunc("/{name}/wallet/top_up", user.TopUpAccount).Methods("POST")
-	userRouter.HandleFunc("/{name}/wallet/take_off", user.TakeOffAccount).Methods("PUT")
-	userRouter.HandleFunc("/{name}/wallet/transfer", user.Transfer).Methods("POST")
-	userRouter.HandleFunc("/{name}/wallet/create", user.CreateAccForUser).Methods("POST")
-
+func GinNewServer() *gin.Engine {
+	router := gin.Default()
+	router.GET("/users", user.GetUsers)
+	router.POST("/user", user.SaveUser)
+	router.GET("/user/:name", user.GetUser)
+	router.GET("/user/:name/wallet", user.GetAccountsByName)
+	router.PUT("user/:name/wallet/top_up", user.TopUpAccount)
+	router.PUT("user/:name/wallet/take_off", user.TakeOffAccount)
+	router.PUT("user/:name/wallet/transfer", user.Transfer)
+	router.POST("user/:name/wallet/create", user.CreateAccForUser)
 	return router
 }
 
@@ -30,7 +24,6 @@ func RunServer(port string) error {
 	if err != nil {
 		return err
 	}
-	router := NewServer()
-	log.Println("Server available on port " + port)
-	return http.ListenAndServe(":"+port, router)
+	router := GinNewServer()
+	return router.Run(port)
 }
