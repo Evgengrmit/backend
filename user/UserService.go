@@ -5,7 +5,12 @@ import (
 	"backend/account/balance"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 )
+
+func NewUser() *User {
+	return &User{UserID: uint64(users.NumberOfUsers() + 1)}
+}
 
 func (u *User) FindAccount(id uint64) (*account.Account, error) {
 	for i := range u.Accounts {
@@ -15,9 +20,6 @@ func (u *User) FindAccount(id uint64) (*account.Account, error) {
 	}
 	return nil, errors.New(fmt.Sprintf("Account %d not found", id))
 }
-func NewUser() *User {
-	return &User{UserID: uint64(users.NumberOfUsers() + 1)}
-}
 
 func (u *User) GetUser() User {
 	return *u
@@ -26,6 +28,7 @@ func (u *User) GetUser() User {
 func (u *User) GetAccounts() []account.Account {
 	return u.Accounts
 }
+
 func (u *User) TopUpAccount(id uint64, b balance.Balance) error {
 	foundAcc, err := u.FindAccount(id)
 	if err != nil {
@@ -38,6 +41,7 @@ func (u *User) TopUpAccount(id uint64, b balance.Balance) error {
 	return nil
 
 }
+
 func (u *User) TakeOffAccount(id uint64, b balance.Balance) error {
 	foundAcc, err := u.FindAccount(id)
 	if err != nil {
@@ -50,6 +54,7 @@ func (u *User) TakeOffAccount(id uint64, b balance.Balance) error {
 	return nil
 
 }
+
 func (u *User) CreateAccount(currency balance.Currency) error {
 	err := balance.CheckCurrency(currency)
 	if err != nil {
@@ -66,8 +71,30 @@ func (u *User) CreateAccount(currency balance.Currency) error {
 
 // USERS
 
-func (users *Users) AddUser(u User) {
-	users.Users = append(users.Users, u)
+func (users *Users) LoginUser(ld *LoginData) (*User, error) {
+	foundUser, err := users.FindUserByLogin(ld.Login)
+	if err != nil {
+		return &User{}, err
+	}
+	err = bcrypt.CompareHashAndPassword(foundUser.HashedPassword, []byte(ld.Password))
+	if err != nil {
+		return &User{}, err
+	}
+	return foundUser, nil
+
+}
+func (users *Users) AddUser(cU *CreatingUser) (User, error) {
+	u := NewUser()
+	u.Name = cU.Name
+	u.Age = cU.Age
+	u.Email = cU.Email
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), bcrypt.MaxCost)
+	if err != nil {
+		return User{}, err
+	}
+	u.HashedPassword = hashedPassword
+	users.Users = append(users.Users, *u)
+	return *u, nil
 }
 
 func (users *Users) NumberOfUsers() int {
@@ -83,9 +110,19 @@ func (users *Users) FindUserByName(name string) (*User, error) {
 	return nil, errors.New(fmt.Sprintf("User %s not found", name))
 }
 
+func (users *Users) FindUserByLogin(login string) (*User, error) {
+	for i := range users.Users {
+		if users.Users[i].Login == login {
+			return &users.Users[i], nil
+		}
+	}
+	return nil, errors.New(fmt.Sprintf("User %s not found", login))
+}
+
 func (users *Users) GetUsers() []User {
 	return users.Users
 }
+
 func (users *Users) CreateAccountForUser(username string, curr balance.Currency) (User, error) {
 	foundUser, err := users.FindUserByName(username)
 	if err != nil {
@@ -96,6 +133,7 @@ func (users *Users) CreateAccountForUser(username string, curr balance.Currency)
 	}
 	return *foundUser, nil
 }
+
 func (users *Users) TopUpForUser(username string, accData *account.Account) (User, error) {
 	foundUser, err := users.FindUserByName(username)
 	if err != nil {

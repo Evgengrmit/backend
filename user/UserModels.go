@@ -2,6 +2,19 @@ package user
 
 import "backend/account/balance"
 
+type CreatingUser struct {
+	Name     string `json:"name"`
+	Age      int8   `json:"age,omitempty"`
+	Login    string `json:"login"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginData struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
 type TransferData struct {
 	AccIDFrom uint64          `json:"id_from"`
 	NameTo    string          `json:"name_to"`

@@ -9,14 +9,31 @@ import (
 
 // SaveUser Создание и сохранения нового пользователя
 func SaveUser(c *gin.Context) {
-	user := NewUser()
+	var creatingUser CreatingUser
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(&creatingUser); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	users.AddUser(*user)
+	user, err := users.AddUser(&creatingUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusCreated, user)
+}
+
+func Authentication(c *gin.Context) {
+	var loginUser LoginData
+	if err := c.ShouldBindJSON(&loginUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	user, err := users.LoginUser(&loginUser)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+	}
+	c.JSON(http.StatusOK, user)
 }
 
 func GetUser(c *gin.Context) {
