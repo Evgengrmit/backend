@@ -3,13 +3,14 @@ package user
 import (
 	"backend/account"
 	"backend/account/balance"
+	"backend/db"
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func NewUser() *User {
-	return &User{UserID: uint64(users.NumberOfUsers() + 1)}
+	return &User{ID: uint64(users.NumberOfUsers() + 1)}
 }
 
 func (u *User) FindAccount(id uint64) (*account.Account, error) {
@@ -62,7 +63,7 @@ func (u *User) CreateAccount(currency balance.Currency) error {
 	}
 	newAccount := account.Account{
 		AccountID: uint64(len(accounts) + 1),
-		UserID:    u.UserID,
+		UserID:    u.ID,
 		Balance:   balance.Balance{Currency: currency}}
 	u.Accounts = append(u.Accounts, newAccount)
 	accounts = append(accounts, newAccount)
@@ -83,16 +84,25 @@ func (users *Users) LoginUser(ld *LoginData) (*User, error) {
 	return foundUser, nil
 
 }
-func (users *Users) AddUser(cU *CreatingUser) (User, error) {
+func (users *Users) CreatingUser(cU *CreatingUser) (User, error) {
 	u := NewUser()
 	u.Name = cU.Name
 	u.Age = cU.Age
 	u.Email = cU.Email
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), bcrypt.MaxCost)
+	fmt.Println("Test5")
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), 1)
+	fmt.Println("Test6")
 	if err != nil {
 		return User{}, err
 	}
 	u.HashedPassword = hashedPassword
+	fmt.Println("Start sending insert")
+	_, err = db.DB.Exec("insert into \"user\" (name, age, email, login, password) values ($1, $2, $3, $4, $5)",
+		u.Name, u.Age, u.Email, u.Login, u.HashedPassword)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Finish sending insert")
 	users.Users = append(users.Users, *u)
 	return *u, nil
 }
@@ -165,7 +175,7 @@ func (users *Users) TransferBetweenUsers(senderName string, td *TransferData) er
 	if err != nil {
 		return err
 	}
-	if sender.UserID == recipient.UserID {
+	if sender.ID == recipient.ID {
 		return errors.New("can't translate to yourself")
 	}
 	senderAcc, err := sender.FindAccount(td.AccIDFrom)

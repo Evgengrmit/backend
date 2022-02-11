@@ -7,17 +7,18 @@ import (
 	"net/http"
 )
 
-// SaveUser Создание и сохранения нового пользователя
-func SaveUser(c *gin.Context) {
+// CreateUser Создание и сохранения нового пользователя
+func CreateUser(c *gin.Context) {
 	var creatingUser CreatingUser
 
 	if err := c.ShouldBindJSON(&creatingUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		NewErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	user, err := users.AddUser(&creatingUser)
+	user, err := users.CreatingUser(&creatingUser)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, user)
@@ -26,12 +27,12 @@ func SaveUser(c *gin.Context) {
 func Authentication(c *gin.Context) {
 	var loginUser LoginData
 	if err := c.ShouldBindJSON(&loginUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		NewErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	user, err := users.LoginUser(&loginUser)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		NewErrorResponse(c, http.StatusForbidden, err.Error())
 	}
 	c.JSON(http.StatusOK, user)
 }
@@ -40,11 +41,10 @@ func GetUser(c *gin.Context) {
 	name := c.Param("name")
 	foundUser, err := users.FindUserByName(name)
 	if err != nil {
-		c.String(http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, foundUser)
-
 }
 
 func GetUsers(c *gin.Context) {
@@ -55,7 +55,7 @@ func GetAccountsByName(c *gin.Context) {
 	name := c.Param("name")
 	foundUser, err := users.FindUserByName(name)
 	if err != nil {
-		c.String(http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, foundUser.GetAccounts())
@@ -71,7 +71,7 @@ func TopUpAccount(c *gin.Context) {
 	}
 	foundUser, err := users.TopUpForUser(name, &replenishment)
 	if err != nil {
-		c.String(http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, foundUser)
@@ -82,12 +82,12 @@ func TakeOffAccount(c *gin.Context) {
 	name := c.Param("name")
 	var replenishment account.Account
 	if err := c.ShouldBindJSON(&replenishment); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		NewErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	foundUser, err := users.TakeOffForUser(name, &replenishment)
 	if err != nil {
-		c.String(http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, foundUser)
@@ -104,7 +104,7 @@ func Transfer(c *gin.Context) {
 	if err := users.TransferBetweenUsers(name, &transferData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
-	c.String(http.StatusOK, "transfer was successful")
+	c.JSON(http.StatusOK, gin.H{"status": "transfer was successful"})
 }
 
 // CreateAccForUser Создание нового аккаунта для юзера
@@ -117,7 +117,7 @@ func CreateAccForUser(c *gin.Context) {
 	}
 	foundUser, err := users.CreateAccountForUser(name, currency)
 	if err != nil {
-		c.String(http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, foundUser)
