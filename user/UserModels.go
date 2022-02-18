@@ -1,6 +1,6 @@
 package user
 
-type CreateUserData struct {
+type CreateData struct {
 	Name     string `json:"name"`
 	Age      int8   `json:"age,omitempty"`
 	Login    string `json:"login"`

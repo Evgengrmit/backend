@@ -22,7 +22,7 @@ func LoginUser(ld *LoginData) (*User, error) {
 	return &u, nil
 }
 
-func AddNewUser(cU *CreateUserData) (int64, error) {
+func AddNewUser(cU *CreateData) (int64, error) {
 	if IsUserExist(cU.Login) {
 		return 0, errors.New("user with this login exists")
 	}
@@ -34,6 +34,32 @@ func AddNewUser(cU *CreateUserData) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+func DeleteUser(dd LoginData) error {
+	row := db.DB.QueryRow("select id,login,password from \"user\" where login = $1", dd.Login)
+	var u User
+	if err := row.Scan(&u.ID, &u.Login, &u.HashedPassword); err != nil {
+		return err
+	}
+	err := bcrypt.CompareHashAndPassword(u.HashedPassword, []byte(dd.Password))
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	tx, err := db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	_, err = db.DB.Exec("delete from account where  user_id = $1", u.ID)
+	if err != nil {
+		return tx.Rollback()
+	}
+	_, err = db.DB.Exec("delete from \"user\" where id = $1", u.ID)
+	if err != nil {
+		return tx.Rollback()
+	}
+	return tx.Commit()
 }
 
 func FindUserByLogin(login string) (*User, error) {

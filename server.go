@@ -11,6 +11,7 @@ func GinNewServer() *gin.Engine {
 	{
 		userRouter.POST("", user.CreateUser)
 		userRouter.GET("/login", user.Authentication)
+		userRouter.DELETE("/delete", user.Deletion)
 
 		wallet := userRouter.Group("/:login/wallet")
 		{

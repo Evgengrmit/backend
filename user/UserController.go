@@ -8,7 +8,7 @@ import (
 
 // CreateUser Создание и сохранения нового пользователя
 func CreateUser(c *gin.Context) {
-	var creatingUser CreateUserData
+	var creatingUser CreateData
 
 	if err := c.BindJSON(&creatingUser); err != nil {
 		NewErrorResponse(c, http.StatusBadRequest, err.Error())
@@ -35,6 +35,19 @@ func Authentication(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+}
+func Deletion(c *gin.Context) {
+	var deleteUser LoginData
+	if err := c.BindJSON(&deleteUser); err != nil {
+		NewErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	err := DeleteUser(deleteUser)
+	if err != nil {
+		NewErrorResponse(c, http.StatusForbidden, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "deletion was successful"})
 }
 
 func CreateAccountForUser(c *gin.Context) {
