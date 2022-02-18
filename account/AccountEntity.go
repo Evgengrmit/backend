@@ -1,17 +1,15 @@
 package account
 
-import (
-	"backend/account/balance"
-)
-
 type Account struct {
-	ID      uint64          `json:"id"`
-	UserID  uint64          `json:"user"`
-	Balance balance.Balance `json:"balance"`
+	ID       int64    `json:"id"`
+	UserID   int64    `json:"user"`
+	Amount   float64  `json:"amount"`
+	Currency Currency `json:"currency"` // enum iota
 }
+type Currency int64
 
-// Создать аккаунт
-// Найти аккаунт по айди
-// Получить все аккаунты
-// Пополнить счет аккаунта
-// Закрыть счет/удалить
+const (
+	RUB Currency = iota
+	EUR
+	USD
+)

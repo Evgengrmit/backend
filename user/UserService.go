@@ -2,33 +2,76 @@ package user
 
 import (
 	"backend/account"
-	"backend/account/balance"
 	"backend/db"
 	"errors"
-	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 )
 
-func NewUser() *User {
-	return &User{}
-}
-
-func (u *User) FindAccount(id uint64) (*account.Account, error) {
-	for i := range u.Accounts {
-		if id != u.Accounts[i].ID {
-			return &u.Accounts[i], nil
-		}
+func LoginUser(ld *LoginData) (*User, error) {
+	row := db.DB.QueryRow("select * from \"user\" where login = $1", ld.Login)
+	var u User
+	if err := row.Scan(&u.ID, &u.Name, &u.Age, &u.Email, &u.Login, &u.HashedPassword); err != nil {
+		return &User{}, err
 	}
-	return nil, errors.New(fmt.Sprintf("Account %d not found", id))
+	err := bcrypt.CompareHashAndPassword(u.HashedPassword, []byte(ld.Password))
+	if err != nil {
+		return &User{}, err
+	}
+	return &u, nil
 }
 
-func (u *User) GetUser() User {
-	return *u
-
+func AddNewUser(cU *CreateUserData) (int64, error) {
+	if IsUserExist(cU.Login) {
+		return 0, errors.New("user with this login exists")
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), 1)
+	ex, err := db.DB.Exec("insert into \"user\" (name, age, email, login, password) values ($1, $2, $3, $4, $5)",
+		cU.Name, cU.Age, cU.Email, cU.Login, hashedPassword)
+	if err != nil {
+		return 0, err
+	}
+	return ex.LastInsertId()
 }
-func (u *User) GetAccounts() []account.Account {
-	return u.Accounts
+
+func FindUserByLogin(login string) *User {
+	var u User
+	row := db.DB.QueryRow("select id from \"user\" where login = $1)", login)
+	err := row.Scan(&u.ID)
+	if err != nil {
+		return nil
+	}
+	return &u
+}
+
+func IsUserExist(login string) bool {
+	var exists bool
+	err := db.DB.QueryRow("select exists(select * from \"user\" where login = $1)", login).Scan(&exists)
+	if err != nil {
+		log.Print(err.Error())
+	}
+	return exists
+}
+
+func (u *User) CreateAccount(currency account.Currency) error {
+	_, err := account.AddNewAccount(u.ID, currency)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) FindAccount(id int64) (*account.Account, error) {
+	return account.FindAccount(id, u.ID)
+}
+
+func (u *User) GetAccounts() ([]account.Account, error) {
+	accounts, err := account.FindAccounts(u.ID)
+	if err != nil {
+		return nil, err
+	}
+	u.Accounts = accounts
+	return u.Accounts, nil
 }
 
 func (u *User) TopUpAccount(id uint64, b balance.Balance) error {
@@ -55,73 +98,6 @@ func (u *User) TakeOffAccount(id uint64, b balance.Balance) error {
 	}
 	return nil
 
-}
-
-func (u *User) CreateAccount(currency balance.Currency) error {
-	err := balance.CheckCurrency(currency)
-	if err != nil {
-		return err
-	}
-	newAccount := account.Account{
-		ID:      uint64(len(accounts) + 1),
-		UserID:  u.ID,
-		Balance: balance.Balance{Currency: currency}}
-	u.Accounts = append(u.Accounts, newAccount)
-	accounts = append(accounts, newAccount)
-	return nil
-}
-
-// USERS
-
-func LoginUser(ld *LoginData) (*User, error) {
-	row := db.DB.QueryRow("select * from \"user\" where login = $1", ld.Login)
-	var u User
-	if err := row.Scan(&u.ID, &u.Name, &u.Age, &u.Email, &u.Login, &u.HashedPassword); err != nil {
-		return &User{}, err
-	}
-	err := bcrypt.CompareHashAndPassword(u.HashedPassword, []byte(ld.Password))
-	if err != nil {
-		return &User{}, err
-	}
-	return &u, nil
-}
-
-func AddNewUser(cU *CreatingUser) (int64, error) {
-	if FindUserByLogin(cU.Login) {
-		return 0, errors.New("user with this login exists")
-	}
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), 1)
-	_, err = db.DB.Exec("insert into \"user\" (name, age, email, login, password) values ($1, $2, $3, $4, $5)",
-		cU.Name, cU.Age, cU.Email, cU.Login, hashedPassword)
-	if err != nil {
-		return 0, errors.New("")
-	}
-	return 0, nil
-}
-
-func FindUserByLogin(login string) bool {
-	var exists bool
-	err := db.DB.QueryRow("select exists(select * from \"user\" where login = $1)", login).Scan(&exists)
-	if err != nil {
-		log.Print(err.Error())
-	}
-	return exists
-}
-
-func FindUsers() []User {
-	return []User{}
-}
-
-func CreateAccountForUser(username string, curr balance.Currency) (User, error) {
-	//foundUser, err := users.FindUserByName(username)
-	//if err != nil {
-	//	return User{}, err
-	//}
-	//if err = foundUser.CreateAccount(curr); err != nil {
-	//	return User{}, err
-	//}
-	//return *foundUser, nil
-	return User{}, nil
 }
 
 func TopUpForUser(username string, accData *account.Account) (User, error) {

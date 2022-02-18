@@ -2,14 +2,13 @@ package user
 
 import (
 	"backend/account"
-	"backend/account/balance"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 // CreateUser Создание и сохранения нового пользователя
 func CreateUser(c *gin.Context) {
-	var creatingUser CreatingUser
+	var creatingUser CreateUserData
 
 	if err := c.BindJSON(&creatingUser); err != nil {
 		NewErrorResponse(c, http.StatusBadRequest, err.Error())
@@ -38,6 +37,21 @@ func Authentication(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func CreateAccountForUser(c *gin.Context) {
+	login := c.Param("login")
+	var currency account.Currency
+	if err := c.BindJSON(&currency); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	u := FindUserByLogin(login)
+	if err := u.CreateAccount(currency); err != nil {
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
+}
+
 //func GetUser(c *gin.Context) {
 //	name := c.Param("name")
 //	foundUser, err := FindUserByName(name)
@@ -47,10 +61,6 @@ func Authentication(c *gin.Context) {
 //	}
 //	c.JSON(http.StatusOK, foundUser)
 //}
-
-func GetUsers(c *gin.Context) {
-	c.JSON(http.StatusOK, FindUsers())
-}
 
 //func GetAccountsByName(c *gin.Context) {
 //	name := c.Param("name")
@@ -108,18 +118,4 @@ func Transfer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "transfer was successful"})
 }
 
-// CreateAccForUser Создание нового аккаунта для юзера
-func CreateAccForUser(c *gin.Context) {
-	name := c.Param("name")
-	var currency balance.Currency
-	if err := c.BindJSON(&currency); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	foundUser, err := CreateAccountForUser(name, currency)
-	if err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
-		return
-	}
-	c.JSON(http.StatusOK, foundUser)
-}
+// CreateAccountForUser Создание нового аккаунта для юзера
