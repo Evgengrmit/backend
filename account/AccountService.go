@@ -2,6 +2,7 @@ package account
 
 import (
 	"backend/db"
+	"errors"
 )
 
 func AddNewAccount(user_id int64, currency Currency) (int64, error) {
@@ -38,31 +39,21 @@ func FindAccounts(userId int64) ([]Account, error) {
 	return results, nil
 }
 
-//
-//func (a *Account) TopUp(b balance.Balance) error {
-//	err := balance.CheckCurrency(b.Currency)
-//	if err != nil {
-//		return err
-//	}
-//	if a.Balance.Currency == b.Currency {
-//		// Обновление поле amount в таблице аккаунтов
-//		a.Balance.TopUp(b.Amount)
-//		return nil
-//	}
-//	return fmt.Errorf("different currencies %d %d", a.Balance.Currency, b.Currency)
-//}
-//
-//func (a *Account) TakeOff(b balance.Balance) error {
-//	err := balance.CheckCurrency(b.Currency)
-//	if err != nil {
-//		return err
-//	}
-//	if a.Balance.Currency == b.Currency {
-//		err = a.Balance.TakeOff(b.Amount)
-//		if err != nil {
-//			return err
-//		}
-//		return nil
-//	}
-//	return errors.New("different currencies")
-//}
+func (a *Account) TopUp(amount float64) error {
+	_, err := db.DB.Exec("update \"account\" set amount = amount + $1 where id=$2", amount, a.ID)
+	return err
+}
+
+func (a *Account) TakeOff(amount float64) error {
+	row := db.DB.QueryRow("select amount from account where id=$1", a.ID)
+	var currentBalance float64
+	err := row.Scan(&currentBalance)
+	if err != nil {
+		return err
+	}
+	if currentBalance-amount > 0 {
+		_, err := db.DB.Exec("update \"account\" set amount = amount - $1 where id=$2", amount, a.ID)
+		return err
+	}
+	return errors.New("insufficient funds to withdraw")
+}

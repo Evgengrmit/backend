@@ -39,83 +39,78 @@ func Authentication(c *gin.Context) {
 
 func CreateAccountForUser(c *gin.Context) {
 	login := c.Param("login")
+	u, err := FindUserByLogin(login)
+	if err != nil {
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		return
+	}
 	var currency account.Currency
 	if err := c.BindJSON(&currency); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	u := FindUserByLogin(login)
 	if err := u.CreateAccount(currency); err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 
-//func GetUser(c *gin.Context) {
-//	name := c.Param("name")
-//	foundUser, err := FindUserByName(name)
-//	if err != nil {
-//		NewErrorResponse(c, http.StatusNotFound, err.Error())
-//		return
-//	}
-//	c.JSON(http.StatusOK, foundUser)
-//}
-
-//func GetAccountsByName(c *gin.Context) {
-//	name := c.Param("name")
-//	foundUser, err := FindUserByName(name)
-//	if err != nil {
-//		NewErrorResponse(c, http.StatusNotFound, err.Error())
-//		return
-//	}
-//	c.JSON(http.StatusOK, foundUser.GetAccounts())
-//}
-
-// TopUpAccount Пополнение счета
 func TopUpAccount(c *gin.Context) {
-	name := c.Param("name")
-	var replenishment account.Account
-	if err := c.BindJSON(&replenishment); err != nil {
+	login := c.Param("login")
+	var uD UpdateData
+	foundUser, err := FindUserByLogin(login)
+	if err != nil {
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		return
+	}
+	if err := c.BindJSON(&uD); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	foundUser, err := TopUpForUser(name, &replenishment)
+	err = foundUser.TopUpAccount(uD.AccountID, uD.Amount)
 	if err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, foundUser)
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 
-// TakeOffAccount Пополнение счета
 func TakeOffAccount(c *gin.Context) {
-	name := c.Param("name")
-	var replenishment account.Account
-	if err := c.BindJSON(&replenishment); err != nil {
-		NewErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
-	foundUser, err := TakeOffForUser(name, &replenishment)
+	login := c.Param("login")
+	foundUser, err := FindUserByLogin(login)
 	if err != nil {
 		NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, foundUser)
+	var uD UpdateData
+	if err := c.BindJSON(&uD); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err = foundUser.TakeOffAccount(uD.AccountID, uD.Amount)
+	if err != nil {
+		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
-
-// Transfer Перевод между пользователями
 func Transfer(c *gin.Context) {
-	name := c.Param("name")
+	login := c.Param("login")
+	foundUser, err := FindUserByLogin(login)
+	if err != nil {
+		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		return
+	}
+
 	var transferData TransferData
 	if err := c.BindJSON(&transferData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := TransferBetweenUsers(name, &transferData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	err = foundUser.TransferToUserByLogin(transferData)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "transfer was successful"})
+	c.JSON(http.StatusOK, gin.H{"message": "transfer was successful"})
 }
-
-// CreateAccountForUser Создание нового аккаунта для юзера

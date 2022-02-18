@@ -12,12 +12,15 @@ type LoginData struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
-
+type UpdateData struct {
+	AccountID int64   `json:"id"`
+	Amount    float64 `json:"amount"`
+}
 type TransferData struct {
-	AccIDFrom uint64 `json:"id_from"`
-	NameTo    string `json:"name_to"`
-	AccIDTo   uint64 `json:"id_to"`
-	//Balance   balance.Balance `json:"balance"`
+	AccIDFrom int64   `json:"id_from"`
+	LoginTo   string  `json:"name_to"`
+	AccIDTo   int64   `json:"id_to"`
+	Amount    float64 `json:"amount"`
 }
 
 type errorResponse struct {

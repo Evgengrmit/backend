@@ -3,6 +3,7 @@ package user
 import (
 	"backend/account"
 	"backend/db"
+	"context"
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"log"
@@ -34,14 +35,14 @@ func AddNewUser(cU *CreateUserData) (int64, error) {
 	return ex.LastInsertId()
 }
 
-func FindUserByLogin(login string) *User {
+func FindUserByLogin(login string) (*User, error) {
 	var u User
-	row := db.DB.QueryRow("select id from \"user\" where login = $1)", login)
+	row := db.DB.QueryRow("select id from \"user\" where login = $1", login)
 	err := row.Scan(&u.ID)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return &u
+	return &u, nil
 }
 
 func IsUserExist(login string) bool {
@@ -66,20 +67,15 @@ func (u *User) FindAccount(id int64) (*account.Account, error) {
 }
 
 func (u *User) GetAccounts() ([]account.Account, error) {
-	accounts, err := account.FindAccounts(u.ID)
-	if err != nil {
-		return nil, err
-	}
-	u.Accounts = accounts
-	return u.Accounts, nil
+	return account.FindAccounts(u.ID)
 }
 
-func (u *User) TopUpAccount(id uint64, b balance.Balance) error {
-	foundAcc, err := u.FindAccount(id)
+func (u *User) TopUpAccount(id int64, amount float64) error {
+	foundAcc, err := account.FindAccount(id, u.ID)
 	if err != nil {
 		return err
 	}
-	err = foundAcc.TopUp(b)
+	err = foundAcc.TopUp(amount)
 	if err != nil {
 		return err
 	}
@@ -87,72 +83,43 @@ func (u *User) TopUpAccount(id uint64, b balance.Balance) error {
 
 }
 
-func (u *User) TakeOffAccount(id uint64, b balance.Balance) error {
-	foundAcc, err := u.FindAccount(id)
+func (u *User) TakeOffAccount(id int64, amount float64) error {
+	foundAcc, err := account.FindAccount(id, u.ID)
 	if err != nil {
 		return err
 	}
-	err = foundAcc.TakeOff(b)
+	err = foundAcc.TakeOff(amount)
 	if err != nil {
 		return err
 	}
 	return nil
-
 }
 
-func TopUpForUser(username string, accData *account.Account) (User, error) {
-	//foundUser, err := users.FindUserByName(username)
-	//if err != nil {
-	//	return User{}, err
-	//}
-	//err = foundUser.TopUpAccount(accData.AccountID, accData.Balance)
-	//if err != nil {
-	//	return User{}, err
-	//}
-	//return *foundUser, nil
-	return User{}, nil
-}
-func TakeOffForUser(username string, accData *account.Account) (User, error) {
-	//foundUser, err := users.FindUserByName(username)
-	//if err != nil {
-	//	return User{}, err
-	//}
-	//err = foundUser.TakeOffAccount(accData.AccountID, accData.Balance)
-	//if err != nil {
-	//	return User{}, err
-	//}
-	return User{}, nil
-}
-func TransferBetweenUsers(senderName string, td *TransferData) error {
-	//sender, err := users.FindUserByName(senderName)
-	//if err != nil {
-	//	return err
-	//}
-	//recipient, err := users.FindUserByName(senderName)
-	//if err != nil {
-	//	return err
-	//}
-	//if sender.ID == recipient.ID {
-	//	return errors.New("can't translate to yourself")
-	//}
-	//senderAcc, err := sender.FindAccount(td.AccIDFrom)
-	//if err != nil {
-	//	return err
-	//}
-	//recipientAcc, err := recipient.FindAccount(td.AccIDTo)
-	//if err != nil {
-	//	return err
-	//}
-	//if senderAcc.Balance.Currency != recipientAcc.Balance.Currency {
-	//	return errors.New("different currencies")
-	//}
-	//err = senderAcc.TakeOff(td.Balance)
-	//if err != nil {
-	//	return err
-	//}
-	//err = recipientAcc.TopUp(td.Balance)
-	//if err != nil {
-	//	return err
-	//}
-	return nil
+func (u *User) TransferToUserByLogin(td TransferData) error {
+	userTo, err := FindUserByLogin(td.LoginTo)
+	if err != nil {
+		return err
+	}
+	accountFrom, err := u.FindAccount(td.AccIDFrom)
+	if err != nil {
+		return err
+	}
+	accountTo, err := userTo.FindAccount(td.AccIDTo)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	tx, err := db.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	err = accountFrom.TakeOff(td.Amount)
+	if err != nil {
+		return tx.Rollback()
+	}
+	err = accountTo.TopUp(td.Amount)
+	if err != nil {
+		return tx.Rollback()
+	}
+	return tx.Commit()
 }
