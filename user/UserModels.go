@@ -18,7 +18,7 @@ type UpdateData struct {
 }
 type TransferData struct {
 	AccIDFrom int64   `json:"id_from"`
-	LoginTo   string  `json:"name_to"`
+	LoginTo   string  `json:"login_to"`
 	AccIDTo   int64   `json:"id_to"`
 	Amount    float64 `json:"amount"`
 }

@@ -12,7 +12,7 @@ import (
 func LoginUser(ld *LoginData) (*User, error) {
 	row := db.DB.QueryRow("select * from \"user\" where login = $1", ld.Login)
 	var u User
-	if err := row.Scan(&u.ID, &u.Name, &u.Age, &u.Email, &u.Login, &u.HashedPassword); err != nil {
+	if err := row.Scan(&u.ID, &u.Name, &u.Age, &u.Login, &u.Email, &u.HashedPassword); err != nil {
 		return &User{}, err
 	}
 	err := bcrypt.CompareHashAndPassword(u.HashedPassword, []byte(ld.Password))
@@ -27,12 +27,13 @@ func AddNewUser(cU *CreateUserData) (int64, error) {
 		return 0, errors.New("user with this login exists")
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), 1)
-	ex, err := db.DB.Exec("insert into \"user\" (name, age, email, login, password) values ($1, $2, $3, $4, $5)",
-		cU.Name, cU.Age, cU.Email, cU.Login, hashedPassword)
+	var id int64
+	err = db.DB.QueryRow("insert into \"user\" (name, age, email, login, password) values ($1, $2, $3, $4, $5) returning id",
+		cU.Name, cU.Age, cU.Email, cU.Login, hashedPassword).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
-	return ex.LastInsertId()
+	return id, nil
 }
 
 func FindUserByLogin(login string) (*User, error) {
@@ -54,12 +55,12 @@ func IsUserExist(login string) bool {
 	return exists
 }
 
-func (u *User) CreateAccount(currency account.Currency) error {
-	_, err := account.AddNewAccount(u.ID, currency)
+func (u *User) CreateAccount(currency account.Currency) (int64, error) {
+	id, err := account.AddNewAccount(u.ID, currency)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return id, nil
 }
 
 func (u *User) FindAccount(id int64) (*account.Account, error) {

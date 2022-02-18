@@ -12,7 +12,7 @@ func GinNewServer() *gin.Engine {
 		userRouter.POST("", user.CreateUser)
 		userRouter.GET("/login", user.Authentication)
 
-		wallet := userRouter.Group("/user/:login/wallet")
+		wallet := userRouter.Group("/:login/wallet")
 		{
 			//wallet.GET("", user.GetAccountsByName)
 			wallet.POST("/create", user.CreateAccountForUser)

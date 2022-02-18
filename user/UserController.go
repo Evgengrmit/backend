@@ -49,11 +49,12 @@ func CreateAccountForUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := u.CreateAccount(currency); err != nil {
+	id, err := u.CreateAccount(currency)
+	if err != nil {
 		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "success"})
+	c.JSON(http.StatusCreated, id)
 }
 
 func TopUpAccount(c *gin.Context) {

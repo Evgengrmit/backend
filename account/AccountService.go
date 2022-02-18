@@ -5,12 +5,14 @@ import (
 	"errors"
 )
 
-func AddNewAccount(user_id int64, currency Currency) (int64, error) {
-	ex, err := db.DB.Exec("insert into \"account\" (currency, user_id) values ($1,$2)", currency, user_id)
+func AddNewAccount(userId int64, currency Currency) (int64, error) {
+	var id int64
+	err := db.DB.QueryRow("insert into \"account\" (currency, user_id) values ($1,$2) returning id",
+		currency, userId).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
-	return ex.LastInsertId()
+	return id, nil
 }
 func FindAccount(accountId, userId int64) (*Account, error) {
 	row := db.DB.QueryRow("select * from \"account\" where id = $1 and user_id = $2", accountId, userId)
