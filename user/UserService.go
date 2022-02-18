@@ -7,15 +7,16 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 )
 
 func NewUser() *User {
-	return &User{ID: uint64(users.NumberOfUsers() + 1)}
+	return &User{}
 }
 
 func (u *User) FindAccount(id uint64) (*account.Account, error) {
 	for i := range u.Accounts {
-		if id != u.Accounts[i].AccountID {
+		if id != u.Accounts[i].ID {
 			return &u.Accounts[i], nil
 		}
 	}
@@ -62,9 +63,9 @@ func (u *User) CreateAccount(currency balance.Currency) error {
 		return err
 	}
 	newAccount := account.Account{
-		AccountID: uint64(len(accounts) + 1),
-		UserID:    u.ID,
-		Balance:   balance.Balance{Currency: currency}}
+		ID:      uint64(len(accounts) + 1),
+		UserID:  u.ID,
+		Balance: balance.Balance{Currency: currency}}
 	u.Accounts = append(u.Accounts, newAccount)
 	accounts = append(accounts, newAccount)
 	return nil
@@ -72,130 +73,110 @@ func (u *User) CreateAccount(currency balance.Currency) error {
 
 // USERS
 
-func (users *Users) LoginUser(ld *LoginData) (*User, error) {
-	foundUser, err := users.FindUserByLogin(ld.Login)
+func LoginUser(ld *LoginData) (*User, error) {
+	row := db.DB.QueryRow("select * from \"user\" where login = $1", ld.Login)
+	var u User
+	if err := row.Scan(&u.ID, &u.Name, &u.Age, &u.Email, &u.Login, &u.HashedPassword); err != nil {
+		return &User{}, err
+	}
+	err := bcrypt.CompareHashAndPassword(u.HashedPassword, []byte(ld.Password))
 	if err != nil {
 		return &User{}, err
 	}
-	err = bcrypt.CompareHashAndPassword(foundUser.HashedPassword, []byte(ld.Password))
-	if err != nil {
-		return &User{}, err
-	}
-	return foundUser, nil
-
+	return &u, nil
 }
-func (users *Users) CreatingUser(cU *CreatingUser) (User, error) {
-	u := NewUser()
-	u.Name = cU.Name
-	u.Age = cU.Age
-	u.Email = cU.Email
-	fmt.Println("Test5")
+
+func AddNewUser(cU *CreatingUser) (int64, error) {
+	if FindUserByLogin(cU.Login) {
+		return 0, errors.New("user with this login exists")
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), 1)
-	fmt.Println("Test6")
-	if err != nil {
-		return User{}, err
-	}
-	u.HashedPassword = hashedPassword
-	fmt.Println("Start sending insert")
 	_, err = db.DB.Exec("insert into \"user\" (name, age, email, login, password) values ($1, $2, $3, $4, $5)",
-		u.Name, u.Age, u.Email, u.Login, u.HashedPassword)
+		cU.Name, cU.Age, cU.Email, cU.Login, hashedPassword)
 	if err != nil {
-		fmt.Println(err)
+		return 0, errors.New("")
 	}
-	fmt.Println("Finish sending insert")
-	users.Users = append(users.Users, *u)
-	return *u, nil
+	return 0, nil
 }
 
-func (users *Users) NumberOfUsers() int {
-	return len(users.Users)
+func FindUserByLogin(login string) bool {
+	var exists bool
+	err := db.DB.QueryRow("select exists(select * from \"user\" where login = $1)", login).Scan(&exists)
+	if err != nil {
+		log.Print(err.Error())
+	}
+	return exists
 }
 
-func (users *Users) FindUserByName(name string) (*User, error) {
-	for i := range users.Users {
-		if users.Users[i].Name == name {
-			return &users.Users[i], nil
-		}
-	}
-	return nil, errors.New(fmt.Sprintf("User %s not found", name))
+func FindUsers() []User {
+	return []User{}
 }
 
-func (users *Users) FindUserByLogin(login string) (*User, error) {
-	for i := range users.Users {
-		if users.Users[i].Login == login {
-			return &users.Users[i], nil
-		}
-	}
-	return nil, errors.New(fmt.Sprintf("User %s not found", login))
+func CreateAccountForUser(username string, curr balance.Currency) (User, error) {
+	//foundUser, err := users.FindUserByName(username)
+	//if err != nil {
+	//	return User{}, err
+	//}
+	//if err = foundUser.CreateAccount(curr); err != nil {
+	//	return User{}, err
+	//}
+	//return *foundUser, nil
+	return User{}, nil
 }
 
-func (users *Users) GetUsers() []User {
-	return users.Users
+func TopUpForUser(username string, accData *account.Account) (User, error) {
+	//foundUser, err := users.FindUserByName(username)
+	//if err != nil {
+	//	return User{}, err
+	//}
+	//err = foundUser.TopUpAccount(accData.AccountID, accData.Balance)
+	//if err != nil {
+	//	return User{}, err
+	//}
+	//return *foundUser, nil
+	return User{}, nil
 }
-
-func (users *Users) CreateAccountForUser(username string, curr balance.Currency) (User, error) {
-	foundUser, err := users.FindUserByName(username)
-	if err != nil {
-		return User{}, err
-	}
-	if err = foundUser.CreateAccount(curr); err != nil {
-		return User{}, err
-	}
-	return *foundUser, nil
+func TakeOffForUser(username string, accData *account.Account) (User, error) {
+	//foundUser, err := users.FindUserByName(username)
+	//if err != nil {
+	//	return User{}, err
+	//}
+	//err = foundUser.TakeOffAccount(accData.AccountID, accData.Balance)
+	//if err != nil {
+	//	return User{}, err
+	//}
+	return User{}, nil
 }
-
-func (users *Users) TopUpForUser(username string, accData *account.Account) (User, error) {
-	foundUser, err := users.FindUserByName(username)
-	if err != nil {
-		return User{}, err
-	}
-	err = foundUser.TopUpAccount(accData.AccountID, accData.Balance)
-	if err != nil {
-		return User{}, err
-	}
-	return *foundUser, nil
-}
-func (users *Users) TakeOffForUser(username string, accData *account.Account) (User, error) {
-	foundUser, err := users.FindUserByName(username)
-	if err != nil {
-		return User{}, err
-	}
-	err = foundUser.TakeOffAccount(accData.AccountID, accData.Balance)
-	if err != nil {
-		return User{}, err
-	}
-	return *foundUser, nil
-}
-func (users *Users) TransferBetweenUsers(senderName string, td *TransferData) error {
-	sender, err := users.FindUserByName(senderName)
-	if err != nil {
-		return err
-	}
-	recipient, err := users.FindUserByName(senderName)
-	if err != nil {
-		return err
-	}
-	if sender.ID == recipient.ID {
-		return errors.New("can't translate to yourself")
-	}
-	senderAcc, err := sender.FindAccount(td.AccIDFrom)
-	if err != nil {
-		return err
-	}
-	recipientAcc, err := recipient.FindAccount(td.AccIDTo)
-	if err != nil {
-		return err
-	}
-	if senderAcc.Balance.Currency != recipientAcc.Balance.Currency {
-		return errors.New("different currencies")
-	}
-	err = senderAcc.TakeOff(td.Balance)
-	if err != nil {
-		return err
-	}
-	err = recipientAcc.TopUp(td.Balance)
-	if err != nil {
-		return err
-	}
+func TransferBetweenUsers(senderName string, td *TransferData) error {
+	//sender, err := users.FindUserByName(senderName)
+	//if err != nil {
+	//	return err
+	//}
+	//recipient, err := users.FindUserByName(senderName)
+	//if err != nil {
+	//	return err
+	//}
+	//if sender.ID == recipient.ID {
+	//	return errors.New("can't translate to yourself")
+	//}
+	//senderAcc, err := sender.FindAccount(td.AccIDFrom)
+	//if err != nil {
+	//	return err
+	//}
+	//recipientAcc, err := recipient.FindAccount(td.AccIDTo)
+	//if err != nil {
+	//	return err
+	//}
+	//if senderAcc.Balance.Currency != recipientAcc.Balance.Currency {
+	//	return errors.New("different currencies")
+	//}
+	//err = senderAcc.TakeOff(td.Balance)
+	//if err != nil {
+	//	return err
+	//}
+	//err = recipientAcc.TopUp(td.Balance)
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }

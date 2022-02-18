@@ -5,9 +5,9 @@ import (
 )
 
 type Account struct {
-	AccountID uint64          `json:"id"`
-	UserID    uint64          `json:"user"`
-	Balance   balance.Balance `json:"balance"`
+	ID      uint64          `json:"id"`
+	UserID  uint64          `json:"user"`
+	Balance balance.Balance `json:"balance"`
 }
 
 // Создать аккаунт

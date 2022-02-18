@@ -11,12 +11,12 @@ func GinNewServer() *gin.Engine {
 	userRouter := router.Group("/user")
 	{
 		userRouter.POST("", user.CreateUser)
-		userRouter.GET("/:name", user.GetUser)
+		//userRouter.GET("/:name", user.GetUser)
 		userRouter.GET("/login", user.Authentication)
 
 		wallet := userRouter.Group("/user/:name/wallet")
 		{
-			wallet.GET("", user.GetAccountsByName)
+			//wallet.GET("", user.GetAccountsByName)
 			wallet.PUT("/top_up", user.TopUpAccount)
 			wallet.PUT("/take_off", user.TakeOffAccount)
 			wallet.PUT("/transfer", user.Transfer)
