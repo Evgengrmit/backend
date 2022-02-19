@@ -5,8 +5,8 @@ import (
 	"errors"
 )
 
-func AddNewAccount(userId int64, currency Currency) (int64, error) {
-	var id int64
+func AddNewAccount(userId int, currency Currency) (int, error) {
+	var id int
 	err := db.DB.QueryRow("insert into \"account\" (currency, user_id) values ($1,$2) returning id",
 		currency, userId).Scan(&id)
 	if err != nil {
@@ -14,7 +14,7 @@ func AddNewAccount(userId int64, currency Currency) (int64, error) {
 	}
 	return id, nil
 }
-func FindAccount(accountId, userId int64) (*Account, error) {
+func FindAccount(accountId, userId int) (*Account, error) {
 	row := db.DB.QueryRow("select * from \"account\" where id = $1 and user_id = $2", accountId, userId)
 	var acc Account
 	if err := row.Scan(&acc.ID, &acc.Amount, &acc.Currency, &acc.UserID); err != nil {
@@ -24,7 +24,7 @@ func FindAccount(accountId, userId int64) (*Account, error) {
 	return &acc, nil
 }
 
-func FindAccounts(userId int64) ([]Account, error) {
+func FindAccounts(userId int) ([]Account, error) {
 	rows, err := db.DB.Query("select * from \"account\" where user_id = $1", userId)
 	if err != nil {
 		return nil, err

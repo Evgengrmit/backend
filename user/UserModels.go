@@ -2,7 +2,7 @@ package user
 
 type CreateData struct {
 	Name     string `json:"name"`
-	Age      int8   `json:"age,omitempty"`
+	Age      int    `json:"age,omitempty"`
 	Login    string `json:"login"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -13,13 +13,13 @@ type LoginData struct {
 	Password string `json:"password"`
 }
 type UpdateData struct {
-	AccountID int64   `json:"id"`
+	AccountID int     `json:"id"`
 	Amount    float64 `json:"amount"`
 }
 type TransferData struct {
-	AccIDFrom int64   `json:"id_from"`
+	AccIDFrom int     `json:"id_from"`
 	LoginTo   string  `json:"login_to"`
-	AccIDTo   int64   `json:"id_to"`
+	AccIDTo   int     `json:"id_to"`
 	Amount    float64 `json:"amount"`
 }
 

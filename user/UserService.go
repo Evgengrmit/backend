@@ -81,28 +81,16 @@ func IsUserExist(login string) bool {
 	return exists
 }
 
-func (u *User) CreateAccount(currency account.Currency) (int64, error) {
-	id, err := account.AddNewAccount(u.ID, currency)
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
-func (u *User) FindAccount(id int64) (*account.Account, error) {
-	return account.FindAccount(id, u.ID)
-}
-
 func (u *User) GetAccounts() ([]account.Account, error) {
 	return account.FindAccounts(u.ID)
 }
 
-func (u *User) TopUpAccount(id int64, amount float64) error {
-	foundAcc, err := account.FindAccount(id, u.ID)
+func TopUpAccount(id, userId int, amount float64) error {
+	foundAccount, err := account.FindAccount(id, userId)
 	if err != nil {
 		return err
 	}
-	err = foundAcc.TopUp(amount)
+	err = foundAccount.TopUp(amount)
 	if err != nil {
 		return err
 	}
@@ -110,28 +98,28 @@ func (u *User) TopUpAccount(id int64, amount float64) error {
 
 }
 
-func (u *User) TakeOffAccount(id int64, amount float64) error {
-	foundAcc, err := account.FindAccount(id, u.ID)
+func TakeOffAccount(id, userId int, amount float64) error {
+	foundAccount, err := account.FindAccount(id, userId)
 	if err != nil {
 		return err
 	}
-	err = foundAcc.TakeOff(amount)
+	err = foundAccount.TakeOff(amount)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *User) TransferToUserByLogin(td TransferData) error {
+func TransferToUserByLogin(idFrom int, td TransferData) error {
 	userTo, err := FindUserByLogin(td.LoginTo)
 	if err != nil {
 		return err
 	}
-	accountFrom, err := u.FindAccount(td.AccIDFrom)
+	accountFrom, err := account.FindAccount(td.AccIDFrom, idFrom)
 	if err != nil {
 		return err
 	}
-	accountTo, err := userTo.FindAccount(td.AccIDTo)
+	accountTo, err := account.FindAccount(td.AccIDTo, userTo.ID)
 	if err != nil {
 		return err
 	}

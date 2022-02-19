@@ -7,18 +7,21 @@ import (
 
 func GinNewServer() *gin.Engine {
 	router := gin.Default()
-	userRouter := router.Group("/user")
+	auth := router.Group("/auth")
 	{
-		userRouter.POST("", user.CreateUser)
-		userRouter.GET("/login", user.Authentication)
+		auth.POST("sign_up", user.SignUp)
+		auth.POST("sign_in", user.SignIn)
+	}
+	userRouter := router.Group("/user", user.Identity)
+	{
 		userRouter.DELETE("/delete", user.Deletion)
 
-		wallet := userRouter.Group("/:login/wallet")
+		wallet := userRouter.Group("/accounts")
 		{
 			//wallet.GET("", user.GetAccountsByName)
 			wallet.POST("/create", user.CreateAccountForUser)
-			wallet.PUT("/top_up", user.TopUpAccount)
-			wallet.PUT("/take_off", user.TakeOffAccount)
+			wallet.PUT("/top_up", user.TopUpAccountForUser)
+			wallet.PUT("/take_off", user.TakeOffAccountForUser)
 			wallet.PUT("/transfer", user.Transfer)
 
 		}
