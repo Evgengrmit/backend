@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/authorization"
 	"backend/user"
 	"github.com/gin-gonic/gin"
 )
@@ -9,8 +10,8 @@ func GinNewServer() *gin.Engine {
 	router := gin.Default()
 	auth := router.Group("/auth")
 	{
-		auth.POST("sign_up", user.SignUp)
-		auth.POST("sign_in", user.SignIn)
+		auth.POST("sign_up", authorization.SignUp)
+		auth.POST("sign_in", authorization.SignIn)
 	}
 	userRouter := router.Group("/user", user.Identity)
 	{

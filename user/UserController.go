@@ -2,50 +2,22 @@ package user
 
 import (
 	"backend/account"
+	"backend/myerr"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 // SignUp Создание и сохранение нового пользователя
-func SignUp(c *gin.Context) {
-	var creatingUser CreateData
-
-	if err := c.BindJSON(&creatingUser); err != nil {
-		NewErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
-	userID, err := AddNewUser(&creatingUser)
-
-	if err != nil {
-		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
-	}
-	c.JSON(http.StatusCreated, &gin.H{"id": userID})
-}
-
-func SignIn(c *gin.Context) {
-	var loginUser LoginData
-	if err := c.BindJSON(&loginUser); err != nil {
-		NewErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}
-	userToken, err := GenerateToken(&loginUser)
-	if err != nil {
-		NewErrorResponse(c, http.StatusForbidden, err.Error())
-		return
-	}
-	c.JSON(http.StatusOK, &gin.H{"token": userToken})
-}
 
 func Deletion(c *gin.Context) {
 	var deleteUser LoginData
 	if err := c.BindJSON(&deleteUser); err != nil {
-		NewErrorResponse(c, http.StatusBadRequest, err.Error())
+		myerr.NewErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	err := DeleteUser(deleteUser)
 	if err != nil {
-		NewErrorResponse(c, http.StatusForbidden, err.Error())
+		myerr.NewErrorResponse(c, http.StatusForbidden, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "deletion was successful"})
@@ -54,7 +26,7 @@ func Deletion(c *gin.Context) {
 func CreateAccountForUser(c *gin.Context) {
 	userID, err := getUserId(c)
 	if err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	var currency account.Currency
@@ -64,16 +36,16 @@ func CreateAccountForUser(c *gin.Context) {
 	}
 	id, err := account.AddNewAccount(userID, currency)
 	if err != nil {
-		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
+		myerr.NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	c.JSON(http.StatusCreated, id)
 }
 
 func TopUpAccountForUser(c *gin.Context) {
-	userID, err := getUserId(c)
+	_, err := getUserId(c)
 	if err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 	var uD UpdateData
@@ -81,18 +53,18 @@ func TopUpAccountForUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = TopUpAccount(uD.AccountID, userID, uD.Amount)
+	err = TopUpAccount(uD.AccountID, uD.Amount)
 	if err != nil {
-		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
+		myerr.NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 
 func TakeOffAccountForUser(c *gin.Context) {
-	userID, err := getUserId(c)
+	_, err := getUserId(c)
 	if err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -101,17 +73,17 @@ func TakeOffAccountForUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = TakeOffAccount(uD.AccountID, userID, uD.Amount)
+	err = TakeOffAccount(uD.AccountID, uD.Amount)
 	if err != nil {
-		NewErrorResponse(c, http.StatusInternalServerError, err.Error())
+		myerr.NewErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 func Transfer(c *gin.Context) {
-	userID, err := getUserId(c)
+	_, err := getUserId(c)
 	if err != nil {
-		NewErrorResponse(c, http.StatusNotFound, err.Error())
+		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -120,7 +92,7 @@ func Transfer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err = TransferToUserByLogin(userID, transferData)
+	err = TransferToUserByLogin(transferData)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}

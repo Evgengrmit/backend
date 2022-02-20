@@ -2,7 +2,6 @@ package user
 
 import (
 	"backend/account"
-	"github.com/gin-gonic/gin"
 )
 
 type User struct {
@@ -13,8 +12,4 @@ type User struct {
 	Email          string            `json:"email"`
 	HashedPassword []byte            `json:"-"`
 	Accounts       []account.Account `json:"accounts,omitempty"`
-}
-
-func NewErrorResponse(c *gin.Context, statusCode int, message string) {
-	c.AbortWithStatusJSON(statusCode, errorResponse{message})
 }

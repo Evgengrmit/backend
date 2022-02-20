@@ -14,8 +14,8 @@ func AddNewAccount(userId int, currency Currency) (int, error) {
 	}
 	return id, nil
 }
-func FindAccount(accountId, userId int) (*Account, error) {
-	row := db.DB.QueryRow("select * from \"account\" where id = $1 and user_id = $2", accountId, userId)
+func FindAccount(accountId int) (*Account, error) {
+	row := db.DB.QueryRow("select * from \"account\" where id = $1", accountId)
 	var acc Account
 	if err := row.Scan(&acc.ID, &acc.Amount, &acc.Currency, &acc.UserID); err != nil {
 		return &Account{}, err

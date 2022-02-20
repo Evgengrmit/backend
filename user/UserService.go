@@ -23,7 +23,7 @@ func LoginUser(ld *LoginData) (*User, error) {
 }
 
 func AddNewUser(cU *CreateData) (int64, error) {
-	if IsUserExist(cU.Login) {
+	if IsUserExistByLogin(cU.Login) {
 		return 0, errors.New("user with this login exists")
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cU.Password), 1)
@@ -62,19 +62,29 @@ func DeleteUser(dd LoginData) error {
 	return tx.Commit()
 }
 
-func FindUserByLogin(login string) (*User, error) {
-	var u User
-	row := db.DB.QueryRow("select id from \"user\" where login = $1", login)
-	err := row.Scan(&u.ID)
-	if err != nil {
-		return nil, err
-	}
-	return &u, nil
-}
+//
+//func FindUserByLogin(login string) (*User, error) {
+//	var u User
+//	row := db.DB.QueryRow("select id from \"user\" where login = $1", login)
+//	err := row.Scan(&u.ID)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return &u, nil
+//}
 
-func IsUserExist(login string) bool {
+func IsUserExistByLogin(login string) bool {
 	var exists bool
 	err := db.DB.QueryRow("select exists(select * from \"user\" where login = $1)", login).Scan(&exists)
+	if err != nil {
+		log.Print(err.Error())
+	}
+	return exists
+}
+
+func IsUserExist(id int) bool {
+	var exists bool
+	err := db.DB.QueryRow("select exists(select * from \"user\" where id = $1)", id).Scan(&exists)
 	if err != nil {
 		log.Print(err.Error())
 	}
@@ -85,8 +95,8 @@ func (u *User) GetAccounts() ([]account.Account, error) {
 	return account.FindAccounts(u.ID)
 }
 
-func TopUpAccount(id, userId int, amount float64) error {
-	foundAccount, err := account.FindAccount(id, userId)
+func TopUpAccount(id int, amount float64) error {
+	foundAccount, err := account.FindAccount(id)
 	if err != nil {
 		return err
 	}
@@ -98,8 +108,8 @@ func TopUpAccount(id, userId int, amount float64) error {
 
 }
 
-func TakeOffAccount(id, userId int, amount float64) error {
-	foundAccount, err := account.FindAccount(id, userId)
+func TakeOffAccount(id int, amount float64) error {
+	foundAccount, err := account.FindAccount(id)
 	if err != nil {
 		return err
 	}
@@ -110,16 +120,12 @@ func TakeOffAccount(id, userId int, amount float64) error {
 	return nil
 }
 
-func TransferToUserByLogin(idFrom int, td TransferData) error {
-	userTo, err := FindUserByLogin(td.LoginTo)
+func TransferToUserByLogin(td TransferData) error {
+	accountFrom, err := account.FindAccount(td.AccIDFrom)
 	if err != nil {
 		return err
 	}
-	accountFrom, err := account.FindAccount(td.AccIDFrom, idFrom)
-	if err != nil {
-		return err
-	}
-	accountTo, err := account.FindAccount(td.AccIDTo, userTo.ID)
+	accountTo, err := account.FindAccount(td.AccIDTo)
 	if err != nil {
 		return err
 	}

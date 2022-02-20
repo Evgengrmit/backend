@@ -22,7 +22,3 @@ type TransferData struct {
 	AccIDTo   int     `json:"id_to"`
 	Amount    float64 `json:"amount"`
 }
-
-type errorResponse struct {
-	Message string `json:"message"`
-}
