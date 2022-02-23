@@ -36,11 +36,7 @@ func Identity(c *gin.Context) {
 	c.Set(userCtx, userId)
 }
 
-// currentUser()
-// currentUserId()
-// checkAccessGranted()
-
-func getUserId(c *gin.Context) (int, error) {
+func GetUserId(c *gin.Context) (int, error) {
 	id, ok := c.Get(userCtx)
 	if !ok {
 		myerr.NewErrorResponse(c, http.StatusNotFound, "user id not found")

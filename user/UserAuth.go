@@ -1,6 +1,7 @@
 package user
 
 import (
+	"backend/db"
 	"errors"
 	"github.com/golang-jwt/jwt"
 	"time"
@@ -27,6 +28,14 @@ func GenerateToken(data *LoginData) (string, error) {
 			IssuedAt:  time.Now().Unix()},
 		int(u.ID),
 	})
+	tokenStr, err := token.SignedString([]byte(signedKey))
+	if err != nil {
+		return "", err
+	}
+	_, err = db.DB.Exec("insert into token (user_id,token,is_valid) values ($1,$2,$3)", u.ID, tokenStr, true)
+	if err != nil {
+		return "", err
+	}
 	return token.SignedString([]byte(signedKey))
 }
 

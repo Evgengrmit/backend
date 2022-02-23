@@ -62,17 +62,6 @@ func DeleteUser(dd LoginData) error {
 	return tx.Commit()
 }
 
-//
-//func FindUserByLogin(login string) (*User, error) {
-//	var u User
-//	row := db.DB.QueryRow("select id from \"user\" where login = $1", login)
-//	err := row.Scan(&u.ID)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return &u, nil
-//}
-
 func IsUserExistByLogin(login string) bool {
 	var exists bool
 	err := db.DB.QueryRow("select exists(select * from \"user\" where login = $1)", login).Scan(&exists)

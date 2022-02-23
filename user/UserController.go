@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-// SignUp Создание и сохранение нового пользователя
-
 func Deletion(c *gin.Context) {
 	var deleteUser LoginData
 	if err := c.BindJSON(&deleteUser); err != nil {
@@ -24,7 +22,7 @@ func Deletion(c *gin.Context) {
 }
 
 func CreateAccountForUser(c *gin.Context) {
-	userID, err := getUserId(c)
+	userID, err := GetUserId(c)
 	if err != nil {
 		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
@@ -43,7 +41,7 @@ func CreateAccountForUser(c *gin.Context) {
 }
 
 func TopUpAccountForUser(c *gin.Context) {
-	_, err := getUserId(c)
+	_, err := GetUserId(c)
 	if err != nil {
 		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
@@ -62,7 +60,7 @@ func TopUpAccountForUser(c *gin.Context) {
 }
 
 func TakeOffAccountForUser(c *gin.Context) {
-	_, err := getUserId(c)
+	_, err := GetUserId(c)
 	if err != nil {
 		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
@@ -81,7 +79,7 @@ func TakeOffAccountForUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 }
 func Transfer(c *gin.Context) {
-	_, err := getUserId(c)
+	_, err := GetUserId(c)
 	if err != nil {
 		myerr.NewErrorResponse(c, http.StatusNotFound, err.Error())
 		return
